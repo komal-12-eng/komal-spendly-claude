@@ -69,6 +69,18 @@ def create_user(name, email, password):
         conn.close()
 
 
+def get_user_by_email(email):
+    """Return the user row for an already-normalised email, or None."""
+    conn = get_db()
+    try:
+        return conn.execute(
+            "SELECT id, name, email, password_hash FROM users WHERE email = ?",
+            (email,),
+        ).fetchone()
+    finally:
+        conn.close()
+
+
 def seed_db():
     """Insert sample development data. Safe to call more than once."""
     conn = get_db()
