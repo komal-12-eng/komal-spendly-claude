@@ -28,8 +28,10 @@ There are no tests or linter config yet. pytest-flask expects an `app` fixture i
 ## Architecture
 
 - `app.py` holds the single Flask app and all routes (no blueprints or app factory). `app.run(debug=True, port=5001)`.
-- `database/` is the data layer. SQLite file `expense_tracker.db` (gitignored, created by `init_db()`). Routes should import from `database.db`.
+- Implemented routes: `landing`, `register` (GET only), `login` (GET only), `terms`, `privacy`. The rest (`logout`, `profile`, `add_expense`, `edit_expense`, `delete_expense`) return placeholder strings.
+- `database/` is the data layer. SQLite file `spendly.db` (gitignored, created by `init_db()`). Routes should import from `database.db`. `db.py` is currently comments only.
 - `templates/`: every page extends `base.html` and fills `{% block title %}`, `{% block content %}`, and optionally `{% block head %}` / `{% block scripts %}`. The navbar in `base.html` is hard-coded to the logged-out state (Sign in / Get started), so it needs updating once auth/session exists.
 - Links use `url_for('<endpoint>')`, so route function names (`landing`, `register`, `login`, ...) are part of the template contract. Don't rename them without updating templates.
 - Auth forms (`register.html`: name/email/password; `login.html`: email/password) `POST` to `/register` and `/login` and render an `{{ error }}` variable. Those routes currently accept only GET, so they need `methods=["GET", "POST"]` when auth is implemented.
-- `static/css/style.css` contains all styling (DM Serif Display / DM Sans via Google Fonts). `static/js/main.js` is an empty placeholder.
+- `static/css/style.css` contains all styling (DM Serif Display / DM Sans via Google Fonts); don't create per-page CSS files. `static/js/main.js` is an empty placeholder.
+- Landing hero uses `lh-*` / `landing-hero` classes at the end of `style.css`; the older `.hero*` / `.mock-*` rules are now unused. The "See how it works" modal is inline vanilla JS in `landing.html`'s `{% block scripts %}`, and closing it unloads the iframe to stop the video. No JS libraries or frameworks are used; keep new JS vanilla.
