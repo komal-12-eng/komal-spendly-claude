@@ -114,9 +114,64 @@ def privacy():
 # Placeholder routes — students will implement these                  #
 # ------------------------------------------------------------------ #
 
+@app.template_filter("inr")
+def inr(amount):
+    return f"₹{amount:,.2f}"
+
+
 @app.route("/profile")
 def profile():
-    return "Profile page — coming in Step 4"
+    if not session.get("user_id"):
+        flash("Please sign in to view your profile.", "error")
+        return redirect(url_for("login"))
+
+    # Step 4: hardcoded data to validate the UI. Real queries arrive in Step 5.
+    user = {
+        "name": "Demo User",
+        "email": "demo@spendly.com",
+        "initials": "DU",
+        "member_since": "November 2026",
+    }
+
+    transactions = [
+        {"date": "2026-11-22", "description": "Groceries", "category": "Food", "amount": 220.00},
+        {"date": "2026-11-18", "description": "Gift", "category": "Other", "amount": 500.00},
+        {"date": "2026-11-14", "description": "Headphones", "category": "Shopping", "amount": 2999.00},
+        {"date": "2026-11-11", "description": "Movie tickets", "category": "Entertainment", "amount": 350.00},
+        {"date": "2026-11-08", "description": "Pharmacy", "category": "Health", "amount": 1500.00},
+        {"date": "2026-11-05", "description": "Electricity bill", "category": "Bills", "amount": 800.00},
+        {"date": "2026-11-03", "description": "Monthly metro pass", "category": "Transport", "amount": 1200.00},
+        {"date": "2026-11-01", "description": "Lunch with team", "category": "Food", "amount": 450.00},
+    ]
+
+    total = sum(t["amount"] for t in transactions)
+    totals_by_category = {}
+    for t in transactions:
+        totals_by_category[t["category"]] = totals_by_category.get(t["category"], 0) + t["amount"]
+
+    categories = [
+        {
+            "name": name,
+            "slug": name.lower(),
+            "total": amount,
+            "percent": round(amount / total * 100) if total else 0,
+        }
+        for name, amount in sorted(totals_by_category.items(), key=lambda kv: kv[1], reverse=True)
+    ]
+
+    stats = {
+        "total": total,
+        "count": len(transactions),
+        "top_category": categories[0]["name"] if categories else "—",
+    }
+
+    return render_template(
+        "profile.html",
+        user=user,
+        stats=stats,
+        transactions=transactions,
+        categories=categories,
+    )
 
 
 @app.route("/expenses/add")
