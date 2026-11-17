@@ -5,6 +5,12 @@ from flask import Flask, flash, redirect, render_template, request, session, url
 from werkzeug.security import check_password_hash
 
 from database.db import create_user, get_db, get_user_by_email, init_db, seed_db
+from database.queries import (
+    get_category_breakdown,
+    get_recent_transactions,
+    get_summary_stats,
+    get_user_by_id,
+)
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "dev-only-change-me")
@@ -125,45 +131,38 @@ def profile():
         flash("Please sign in to view your profile.", "error")
         return redirect(url_for("login"))
 
-    # Step 4: hardcoded data to validate the UI. Real queries arrive in Step 5.
-    user = {
-        "name": "Demo User",
-        "email": "demo@spendly.com",
-        "initials": "DU",
-        "member_since": "November 2026",
+    uid = session["user_id"]
+    user = get_user_by_id(uid)
+    if user is None:
+        session.clear()
+        flash("Your account could not be found. Please sign in again.", "error")
+        return redirect(url_for("login"))
+    user["initials"] = "".join(w[0] for w in user["name"].split()[:2]).upper() or "?"
+
+    # === SECTION: TRANSACTIONS ===
+    transactions = get_recent_transactions(uid)
+    # === END SECTION: TRANSACTIONS ===
+
+    # === SECTION: SUMMARY STATS ===
+    s = get_summary_stats(uid)
+    stats = {
+        "total": s["total_spent"],
+        "count": s["transaction_count"],
+        "top_category": s["top_category"],
     }
+    # === END SECTION: SUMMARY STATS ===
 
-    transactions = [
-        {"date": "2026-11-22", "description": "Groceries", "category": "Food", "amount": 220.00},
-        {"date": "2026-11-18", "description": "Gift", "category": "Other", "amount": 500.00},
-        {"date": "2026-11-14", "description": "Headphones", "category": "Shopping", "amount": 2999.00},
-        {"date": "2026-11-11", "description": "Movie tickets", "category": "Entertainment", "amount": 350.00},
-        {"date": "2026-11-08", "description": "Pharmacy", "category": "Health", "amount": 1500.00},
-        {"date": "2026-11-05", "description": "Electricity bill", "category": "Bills", "amount": 800.00},
-        {"date": "2026-11-03", "description": "Monthly metro pass", "category": "Transport", "amount": 1200.00},
-        {"date": "2026-11-01", "description": "Lunch with team", "category": "Food", "amount": 450.00},
-    ]
-
-    total = sum(t["amount"] for t in transactions)
-    totals_by_category = {}
-    for t in transactions:
-        totals_by_category[t["category"]] = totals_by_category.get(t["category"], 0) + t["amount"]
-
+    # === SECTION: CATEGORY BREAKDOWN ===
     categories = [
         {
-            "name": name,
-            "slug": name.lower(),
-            "total": amount,
-            "percent": round(amount / total * 100) if total else 0,
+            "name": c["name"],
+            "total": c["amount"],
+            "percent": c["pct"],
+            "slug": c["name"].lower(),
         }
-        for name, amount in sorted(totals_by_category.items(), key=lambda kv: kv[1], reverse=True)
+        for c in get_category_breakdown(uid)
     ]
-
-    stats = {
-        "total": total,
-        "count": len(transactions),
-        "top_category": categories[0]["name"] if categories else "—",
-    }
+    # === END SECTION: CATEGORY BREAKDOWN ===
 
     return render_template(
         "profile.html",
